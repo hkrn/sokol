@@ -857,8 +857,9 @@ typedef struct sg_features {
     bool image_clamp_to_border;         // border color and clamp-to-border UV-wrap mode is supported
     bool mrt_independent_blend_state;   // multiple-render-target rendering can use per-render-target blend state
     bool mrt_independent_write_mask;    // multiple-render-target rendering can use per-render-target color write masks
+    bool blend_op_minmax;               // min/max blend operation mode is supported
     #if defined(SOKOL_ZIG_BINDINGS)
-    uint32_t __pad[3];
+    uint32_t __pad[2];
     #endif
 } sg_features;
 
@@ -1369,6 +1370,8 @@ typedef enum sg_blend_op {
     SG_BLENDOP_ADD,
     SG_BLENDOP_SUBTRACT,
     SG_BLENDOP_REVERSE_SUBTRACT,
+    SG_BLENDOP_MIN,
+    SG_BLENDOP_MAX,
     _SG_BLENDOP_NUM,
     _SG_BLENDOP_FORCE_U32 = 0x7FFFFFFF
 } sg_blend_op;
@@ -4978,6 +4981,8 @@ _SOKOL_PRIVATE GLenum _sg_gl_blend_op(sg_blend_op op) {
         case SG_BLENDOP_ADD:                return GL_FUNC_ADD;
         case SG_BLENDOP_SUBTRACT:           return GL_FUNC_SUBTRACT;
         case SG_BLENDOP_REVERSE_SUBTRACT:   return GL_FUNC_REVERSE_SUBTRACT;
+        case SG_BLENDOP_MIN:                return GL_MIN;
+        case SG_BLENDOP_MAX:                return GL_MAX;
         default: SOKOL_UNREACHABLE; return 0;
     }
 }
@@ -5553,6 +5558,7 @@ _SOKOL_PRIVATE void _sg_gl_init_caps_glcore33(void) {
     _sg.features.image_clamp_to_border = true;
     _sg.features.mrt_independent_blend_state = false;
     _sg.features.mrt_independent_write_mask = true;
+    _sg.features.blend_op_minmax = true;
 
     /* scan extensions */
     bool has_s3tc = false;  /* BC1..BC3 */
@@ -5630,6 +5636,7 @@ _SOKOL_PRIVATE void _sg_gl_init_caps_gles3(void) {
     _sg.features.image_clamp_to_border = false;
     _sg.features.mrt_independent_blend_state = false;
     _sg.features.mrt_independent_write_mask = false;
+    _sg.features.blend_op_minmax = true;
 
     bool has_s3tc = false;  /* BC1..BC3 */
     bool has_rgtc = false;  /* BC4 and BC5 */
@@ -5767,6 +5774,7 @@ _SOKOL_PRIVATE void _sg_gl_init_caps_gles2(void) {
     _sg.features.image_clamp_to_border = false;
     _sg.features.mrt_independent_blend_state = false;
     _sg.features.mrt_independent_write_mask = false;
+    _sg.features.blend_op_minmax = false;
 
     /* limits */
     _sg_gl_init_limits();
@@ -8087,6 +8095,8 @@ _SOKOL_PRIVATE D3D11_BLEND_OP _sg_d3d11_blend_op(sg_blend_op op) {
         case SG_BLENDOP_ADD:                return D3D11_BLEND_OP_ADD;
         case SG_BLENDOP_SUBTRACT:           return D3D11_BLEND_OP_SUBTRACT;
         case SG_BLENDOP_REVERSE_SUBTRACT:   return D3D11_BLEND_OP_REV_SUBTRACT;
+        case SG_BLENDOP_MIN:                return D3D11_BLEND_OP_MIN;
+        case SG_BLENDOP_MAX:                return D3D11_BLEND_OP_MAX;
         default: SOKOL_UNREACHABLE; return (D3D11_BLEND_OP) 0;
     }
 }
@@ -8121,6 +8131,7 @@ _SOKOL_PRIVATE void _sg_d3d11_init_caps(void) {
     _sg.features.image_clamp_to_border = true;
     _sg.features.mrt_independent_blend_state = true;
     _sg.features.mrt_independent_write_mask = true;
+    _sg.features.blend_op_minmax = true;
 
     _sg.limits.max_image_size_2d = 16 * 1024;
     _sg.limits.max_image_size_cube = 16 * 1024;
@@ -9474,6 +9485,8 @@ _SOKOL_PRIVATE MTLBlendOperation _sg_mtl_blend_op(sg_blend_op op) {
         case SG_BLENDOP_ADD:                return MTLBlendOperationAdd;
         case SG_BLENDOP_SUBTRACT:           return MTLBlendOperationSubtract;
         case SG_BLENDOP_REVERSE_SUBTRACT:   return MTLBlendOperationReverseSubtract;
+        case SG_BLENDOP_MIN:                return MTLBlendOperationMin;
+        case SG_BLENDOP_MAX:                return MTLBlendOperationMax;
         default: SOKOL_UNREACHABLE; return (MTLBlendOperation)0;
     }
 }
@@ -9836,6 +9849,7 @@ _SOKOL_PRIVATE void _sg_mtl_init_caps(void) {
     _sg.features.msaa_render_targets = true;
     _sg.features.imagetype_3d = true;
     _sg.features.imagetype_array = true;
+    _sg.features.blend_op_minmax = true;
     #if defined(_SG_TARGET_MACOS)
         _sg.features.image_clamp_to_border = true;
     #else
@@ -11257,6 +11271,8 @@ _SOKOL_PRIVATE WGPUBlendOperation _sg_wgpu_blendop(sg_blend_op op) {
         case SG_BLENDOP_ADD:                return WGPUBlendOperation_Add;
         case SG_BLENDOP_SUBTRACT:           return WGPUBlendOperation_Subtract;
         case SG_BLENDOP_REVERSE_SUBTRACT:   return WGPUBlendOperation_ReverseSubtract;
+        case SG_BLENDOP_MIN:                return WGPUBlendOperation_Min;
+        case SG_BLENDOP_MAX:                return WGPUBlendOperation_Max;
         default: SOKOL_UNREACHABLE; return WGPUBlendOperation_Force32;
     }
 }
@@ -11312,6 +11328,7 @@ _SOKOL_PRIVATE void _sg_wgpu_init_caps(void) {
     _sg.features.image_clamp_to_border = false;
     _sg.features.mrt_independent_blend_state = true;
     _sg.features.mrt_independent_write_mask = true;
+    _sg.features.blend_op_minmax = true;
 
     /* FIXME: max images size??? */
     _sg.limits.max_image_size_2d = 8 * 1024;
